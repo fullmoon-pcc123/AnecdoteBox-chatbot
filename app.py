@@ -75,9 +75,9 @@ st.markdown("""
 
 @st.cache_data
 def load_data():
-df = pd.read_csv("anecdotebox_final.csv")
-df = df.fillna("")
-return df
+    df = pd.read_csv("anecdotebox_final.csv")
+    df = df.fillna("")
+    return df
 
 df = load_data()
 
