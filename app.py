@@ -6,7 +6,7 @@ import os
 # ── PAGE CONFIG ───────────────────────────────────────────────────────────────
 
 st.set_page_config(
-page_title=“AnecdoteBox Chatbot”,
+page_title="AnecdoteBox Chatbot",
 page_icon=“📖”,
 layout=“centered”
 )
