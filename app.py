@@ -91,7 +91,7 @@ st.markdown("""
 # ---------------------------------------------------------
 @st.cache_data
 def load_data():
-    csv_file = "anecdotebox1withimage.csv"
+    csv_file = "Chatbox Master file.csv"
     try:
         # Try reading as standard CSV
         df = pd.read_csv(csv_file)
@@ -124,7 +124,7 @@ except Exception:
     client = None
 
 # Using the FREE, Stable 1.5 Model
-MODEL = "gemini-1.5-flash"
+MODEL = "gemini-flash-latest"
 
 # ---------------------------------------------------------
 # 5. HELPER FUNCTIONS
