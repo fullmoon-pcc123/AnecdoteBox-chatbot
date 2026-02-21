@@ -18,10 +18,6 @@ st.set_page_config(
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-/* ADD THIS TO YOUR CSS SECTION */
-div[data-testid="stImage"] {
-    display: flex;
-    justify-content: center;
 /* Background */
 .stApp {
     background-color: #FDFBF7;
