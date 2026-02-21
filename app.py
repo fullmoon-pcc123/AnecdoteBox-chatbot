@@ -38,7 +38,7 @@ st.markdown("""
 }
 .samu-title {
     font-family: 'Georgia', serif;
-    font-size: 38px;
+    font-size: 28px;
     font-weight: 800;
     color: #C4622D;
     margin-bottom: 5px;
@@ -223,7 +223,7 @@ def find_stories(query, n=3):
 # 6. HEADER & MAIN UI
 # ---------------------------------------------------------
 
-col1, col2, col3 = st.columns([1, 4, 1])
+col1, col2, col3 = st.columns([3, 2, 3])
 with col2:
     if os.path.exists("logo.png"):
         st.image("logo.png", width=120) # <--- 120px is small and neat
