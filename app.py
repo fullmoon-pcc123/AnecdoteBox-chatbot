@@ -223,16 +223,36 @@ def find_stories(query, n=3):
 # 6. HEADER & MAIN UI
 # ---------------------------------------------------------
 
-col1, col2, col3 = st.columns([3, 2, 3])
+# ---------------------------------------------------------
+# 6. HEADER & MAIN UI
+# ---------------------------------------------------------
+
+# 1. CENTER THE LOGO
+# Using [1.5, 1, 1.5] pushes the middle column to the exact center
+col1, col2, col3 = st.columns([1.5, 1, 1.5])
+
 with col2:
     if os.path.exists("logo.png"):
-        st.image("logo.png", width=120) # <--- 120px is small and neat
-    st.markdown("""
-    <div class="header-container">
-        <div class="samu-title">Chat with Samu</div>
-        <div class="samu-subtitle">Your Friendly Guide to the AnecdoteBox</div>
+        st.image("logo.png", width=120)
+
+# 2. TITLE & NEW TEXT
+st.markdown("""
+<div class="header-container">
+    <div class="samu-title">Chat with Samu</div>
+    <div class="samu-subtitle">Your Friendly Guide to the AnecdoteBox</div>
+    
+    <!-- NEW TEXT ADDED HERE -->
+    <div style="font-size: 14px; color: #888; margin-top: 10px; font-weight: 500;">
+        Stories to make your day at <span style="color:#C4622D;">anecdotebox.com</span>
     </div>
-    """, unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# TABS SECTION (Keep this as it is)
+# ---------------------------------------------------------
+tab1, tab2 = st.tabs(["🏠 Fresh Picks", "💬 Chat with Samu"])
+# ... rest of code ...
 
 tab1, tab2 = st.tabs(["🏠 Fresh Picks", "💬 Chat with Samu"])
 
