@@ -116,7 +116,7 @@ st.markdown("""
 # ---------------------------------------------------------
 @st.cache_data
 def load_data():
-    csv_file = "Chatbot Master file.csv"
+    csv_file = "Chatbox Master file.csv"
     
     # Check if file exists first
     if not os.path.exists(csv_file):
