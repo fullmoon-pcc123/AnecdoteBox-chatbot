@@ -226,7 +226,7 @@ def find_stories(query, n=3):
 col1, col2, col3 = st.columns([1, 4, 1])
 with col2:
     if os.path.exists("logo.png"):
-        st.image("logo.png", use_container_width=True)
+        st.image("logo.png", width=120) # <--- 120px is small and neat
     st.markdown("""
     <div class="header-container">
         <div class="samu-title">Chat with Samu</div>
@@ -262,7 +262,7 @@ with tab2:
             if "html" in msg and msg["html"]:
                 st.markdown(msg["html"], unsafe_allow_html=True)
 
-    if prompt := st.chat_input("Ex: I want a story about love..."):
+    if prompt := st.chat_input("Ex: I want a story about humour,love,..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.write(prompt)
 
