@@ -262,7 +262,7 @@ with tab2:
             if "html" in msg and msg["html"]:
                 st.markdown(msg["html"], unsafe_allow_html=True)
 
-    if prompt := st.chat_input("Ex: I want a story about humour,love,..."):
+    if prompt := st.chat_input("Ex: I want a story about reflection,motivational,emotion,..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.write(prompt)
 
