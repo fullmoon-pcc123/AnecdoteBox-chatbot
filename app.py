@@ -18,6 +18,10 @@ st.set_page_config(
 # ---------------------------------------------------------
 st.markdown("""
 <style>
+/* ADD THIS TO YOUR CSS SECTION */
+div[data-testid="stImage"] {
+    display: flex;
+    justify-content: center;
 /* Background */
 .stApp {
     background-color: #FDFBF7;
@@ -223,38 +227,32 @@ def find_stories(query, n=3):
 # 6. HEADER & MAIN UI
 # ---------------------------------------------------------
 
-# ---------------------------------------------------------
-# 6. HEADER & MAIN UI
-# ---------------------------------------------------------
+# 1. LOGO (Centered automatically by the new CSS)
+if os.path.exists("logo.png"):
+    st.image("logo.png", width=120)
 
-# 1. CENTER THE LOGO
-# Using [1.5, 1, 1.5] pushes the middle column to the exact center
-col1, col2, col3 = st.columns([1.5, 1, 1.5])
+# 2. NEW TEXT (Immediately under logo)
+st.markdown("""
+<div style="text-align: center; margin-top: -5px; margin-bottom: 20px;">
+    <span style="font-size: 14px; color: #555; font-weight: 500;">
+        Stories to make your day at <span style="color:#C4622D;">anecdotebox.com</span>
+    </span>
+</div>
+""", unsafe_allow_html=True)
 
-with col2:
-    if os.path.exists("logo.png"):
-        st.image("logo.png", width=120)
-
-# 2. TITLE & NEW TEXT
+# 3. MAIN TITLE (Chat with Samu)
 st.markdown("""
 <div class="header-container">
     <div class="samu-title">Chat with Samu</div>
     <div class="samu-subtitle">Your Friendly Guide to the AnecdoteBox</div>
-    
-    <!-- NEW TEXT ADDED HERE -->
-    <div style="font-size: 14px; color: #888; margin-top: 10px; font-weight: 500;">
-        Stories to make your day at <span style="color:#C4622D;">anecdotebox.com</span>
-    </div>
 </div>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# TABS SECTION (Keep this as it is)
+# TABS SECTION
 # ---------------------------------------------------------
 tab1, tab2 = st.tabs(["🏠 Fresh Picks", "💬 Chat with Samu"])
-# ... rest of code ...
-
-tab1, tab2 = st.tabs(["🏠 Fresh Picks", "💬 Chat with Samu"])
+# ... rest of the code ...
 
 # --- TAB 1: HOME ---
 with tab1:
