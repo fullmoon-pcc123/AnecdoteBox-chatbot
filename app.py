@@ -8,8 +8,8 @@ from google import genai
 # 1. PAGE CONFIGURATION
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="Chat with Samu",
-    page_icon="icon.png", # <--- MAKE SURE YOU UPLOAD icon.png
+    page_title="AnecdoteBox",
+    page_icon="icon.png", # Your baby girl icon
     layout="centered"
 )
 
@@ -18,7 +18,7 @@ st.set_page_config(
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-/* Background */
+/* --- MAIN BACKGROUND --- */
 .stApp {
     background-color: #FDFBF7;
     background-image: linear-gradient(180deg, #FDFBF7 0%, #F5F0E6 100%);
@@ -26,31 +26,58 @@ st.markdown("""
     font-family: 'Helvetica Neue', sans-serif;
 }
 
-/* Header */
-.header-container {
+/* --- LOGO TEXT STYLING (Mimics your image) --- */
+.logo-container {
     text-align: center;
-    padding: 20px;
+    margin-top: 20px;
+    margin-bottom: 5px;
+}
+.logo-text {
+    font-family: 'Arial Rounded MT Bold', 'Helvetica Rounded', 'Arial', sans-serif;
+    font-size: 50px; /* Big and bold */
+    font-weight: 900;
+    color: #1A1F2C; /* Dark Navy/Black from your logo */
+    letter-spacing: -1px;
+    line-height: 1.1;
+}
+.logo-accent {
+    color: #E64833; /* The Red/Orange color for 'Box' */
+}
+.logo-tagline {
+    font-family: 'Helvetica Neue', sans-serif;
+    font-size: 16px;
+    color: #666;
+    margin-top: 0px;
+    margin-bottom: 30px;
+    font-weight: 500;
+    text-align: center;
+}
+
+/* --- CHAT WITH SAMU HEADER --- */
+.samu-header {
     background: white;
-    border-radius: 20px;
-    box-shadow: 0 4px 15px rgba(196, 98, 45, 0.08);
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     border: 1px solid #EFEFEF;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
 }
 .samu-title {
     font-family: 'Georgia', serif;
-    font-size: 28px;
+    font-size: 26px; 
     font-weight: 800;
     color: #C4622D;
-    margin-bottom: 5px;
+    margin: 0;
 }
 .samu-subtitle {
-    font-family: 'Helvetica Neue', sans-serif;
-    font-size: 16px;
+    font-size: 15px;
     color: #8B5E3C;
     font-style: italic;
+    margin-top: 5px;
 }
 
-/* Story Cards */
+/* --- STORY CARDS --- */
 .story-card {
     background: white;
     border-radius: 12px;
@@ -79,7 +106,7 @@ st.markdown("""
     font-size: 16px;
     margin-bottom: 8px;
     line-height: 1.3;
-    height: 42px; /* Fixed height for alignment */
+    height: 42px; 
     overflow: hidden;
 }
 .story-summary {
@@ -91,7 +118,7 @@ st.markdown("""
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    height: 55px; /* Fixed height for alignment */
+    height: 55px;
 }
 .read-btn {
     display: block;
@@ -112,35 +139,26 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3. DATA LOADING (ROBUST VERSION)
+# 3. DATA LOADING
 # ---------------------------------------------------------
 @st.cache_data
 def load_data():
     csv_file = "Chatbox Master file.csv"
     
-    # Check if file exists first
     if not os.path.exists(csv_file):
-        st.error(f"❌ CRITICAL ERROR: The file '{csv_file}' was not found in the folder.")
+        st.error(f"❌ File not found: {csv_file}")
         return pd.DataFrame()
 
     try:
         df = pd.read_csv(csv_file)
-    except Exception as e1:
+    except Exception:
         try:
-            # Fallback for encoding issues
             df = pd.read_csv(csv_file, encoding='latin1')
-        except Exception as e2:
-            st.error(f"❌ ERROR LOADING CSV: {e2}")
+        except:
             return pd.DataFrame()
 
     df = df.fillna("")
-    # Standardize column names
     df.columns = [c.lower().strip().replace(" ", "_") for c in df.columns]
-    
-    # Quick Debug: Check if 'featured_image' exists
-    if 'featured_image' not in df.columns and not df.empty:
-        st.warning(f"⚠️ Warning: 'Featured Image' column not found. Available columns: {list(df.columns)}")
-        
     return df
 
 df = load_data()
@@ -164,7 +182,7 @@ def render_story_card(row):
     title = row.get('title', 'Untitled')
     full_summary = str(row.get('summary', ''))
     
-    # Truncate summary for "crispy" look
+    # Crisp summary (90 chars)
     if len(full_summary) > 90:
         summary = full_summary[:90].rsplit(' ', 1)[0] + "..."
     else:
@@ -180,8 +198,7 @@ def render_story_card(row):
     html = f"""
     <div class="story-card">
         <a href="{link}" target="_blank">
-            <img src="{img_url}" class="story-img" 
-                 onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1519681393798-3828fb4090bb?auto=format&fit=crop&w=400&q=80';">
+            <img src="{img_url}" class="story-img" onerror="this.src='https://images.unsplash.com/photo-1519681393798-3828fb4090bb?auto=format&fit=crop&w=400&q=80'">
         </a>
         <div class="card-content">
             <div class="story-title">{title}</div>
@@ -194,81 +211,69 @@ def render_story_card(row):
 
 def find_stories(query, n=3):
     if df.empty: return []
-    
     q = query.lower()
     scores = []
     
-    # 1. Try to find matches
     for _, row in df.iterrows():
-        # Search everywhere (Title, Category, Tags, Summary)
-        txt = f"{row.get('title','')} {row.get('tags','')} {row.get('summary','')} {row.get('category','')} {row.get('content','')}".lower()
-        
+        txt = f"{row.get('title','')} {row.get('tags','')} {row.get('summary','')} {row.get('content','')}".lower()
         score = 0
         for w in q.split():
             if w in txt: score += 1
-            
-        if score > 0:
-            scores.append((score, row))
+        if score > 0: scores.append((score, row))
             
     scores.sort(key=lambda x: x[0], reverse=True)
     results = [row for _, row in scores[:n]]
     
-    # 2. FALLBACK LOGIC: If no results found, return random ones!
     if not results:
-        return df.sample(n=min(n, len(df))).to_dict('records'), False # False means "Random match"
+        return df.sample(n=min(n, len(df))).to_dict('records'), False
     
-    return results, True # True means "Exact match"
+    return results, True
 
 # ---------------------------------------------------------
 # 6. HEADER & MAIN UI
 # ---------------------------------------------------------
 
-# 1. LOGO (Centered automatically by the new CSS)
-if os.path.exists("logo.png"):
-    st.image("logo.png", width=120)
-
-# 2. NEW TEXT (Immediately under logo)
+# --- A. THE LOGO & TAGLINE (Text Based) ---
 st.markdown("""
-<div style="text-align: center; margin-top: -5px; margin-bottom: 20px;">
-    <span style="font-size: 14px; color: #555; font-weight: 500;">
-        Stories to make your day at <span style="color:#C4622D;">anecdotebox.com</span>
-    </span>
+<div class="logo-container">
+    <div class="logo-text">
+        Anecdote<span class="logo-accent">Box</span>
+    </div>
+    <div class="logo-tagline">
+        Stories to make your day
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-# 3. MAIN TITLE (Chat with Samu)
+# --- B. THE SAMU HEADER ---
 st.markdown("""
-<div class="header-container">
+<div class="samu-header">
     <div class="samu-title">Chat with Samu</div>
     <div class="samu-subtitle">Your Friendly Guide to the AnecdoteBox</div>
 </div>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# TABS SECTION
-# ---------------------------------------------------------
-tab1, tab2 = st.tabs(["🏠 Fresh Picks", "💬 Chat with Samu"])
-# ... rest of the code ...
 
-# --- TAB 1: HOME ---
+# --- C. TABS & LOGIC ---
+tab1, tab2 = st.tabs(["🏠 Fresh Picks", "💬 Chat with Samu"])
+
+# TAB 1: HOME
 with tab1:
     if not df.empty:
         st.markdown("### ✨ Featured Stories")
-        # Ensure we don't crash if df is smaller than 3
         sample_size = min(3, len(df))
         random_stories = df.sample(n=sample_size)
-        
         c1, c2, c3 = st.columns(3)
         for i, (_, row) in enumerate(random_stories.iterrows()):
             with [c1, c2, c3][i]:
                 st.markdown(render_story_card(row), unsafe_allow_html=True)
     else:
-        st.info("⚠️ Data not loaded. Please check CSV file name.")
+        st.info("No stories found.")
 
-# --- TAB 2: CHAT ---
+# TAB 2: CHAT
 with tab2:
     if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "Hello! I am Samu your frindly AnecdoteBox chatbot. Tell me, what you prefer to read?"}]
+        st.session_state.messages = [{"role": "assistant", "content": "Hello! I am Samu. How are you feeling today?"}]
 
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
@@ -276,49 +281,33 @@ with tab2:
             if "html" in msg and msg["html"]:
                 st.markdown(msg["html"], unsafe_allow_html=True)
 
-    if prompt := st.chat_input("Ex: I want a story about reflection,motivational,emotion,..."):
+    if prompt := st.chat_input("Ex: I want a story about hope..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.write(prompt)
 
-        # Run Search
         stories_list = []
-        is_exact_match = False
-        
+        is_exact = False
         if not df.empty:
-            found_data, is_exact_match = find_stories(prompt)
-            # Convert back to list of rows if it was a dataframe sample
-            if isinstance(found_data, list):
-                stories_list = found_data
-            else:
-                # If it came from sample() fallback (which returns dict)
-                stories_list = found_data
+            found_data, is_exact = find_stories(prompt)
+            if isinstance(found_data, list): stories_list = found_data
+            else: stories_list = found_data
 
-        # Prepare Context
         context_text = ""
         cards_html = ""
-        
         if stories_list:
             cards_html = "<div style='display:flex; gap:10px; overflow-x:auto; padding-bottom:15px;'>"
             for s in stories_list:
-                # Handle dictionary vs Series access
                 title = s.get('title') if isinstance(s, dict) else s['title']
                 summary = s.get('summary') if isinstance(s, dict) else s['summary']
-                
                 context_text += f"- {title}: {summary}\n"
                 cards_html += f"<div style='min-width:220px; max-width:220px;'>{render_story_card(s)}</div>"
             cards_html += "</div>"
         
-        # Decide Prompt based on whether we found exact matches or random ones
-        if is_exact_match:
-            instructions = "I found these specific stories for you. Recommend them enthusiastically."
-        else:
-            instructions = f"I couldn't find stories exactly matching '{prompt}', but I selected these random interesting stories. Apologize gently, then recommend these instead."
+        instructions = "Recommend these specific stories." if is_exact else "I couldn't find an exact match, but here are some nice random stories."
 
         full_prompt = f"""
-        You are Samu. User asked: "{prompt}"
-        Stories to display:
-        {context_text}
-        
+        You are Samu. User: "{prompt}"
+        Stories: {context_text}
         Instruction: {instructions}
         Keep it short.
         """
@@ -334,7 +323,6 @@ with tab2:
                     
                     st.write(reply)
                     if cards_html: st.markdown(cards_html, unsafe_allow_html=True)
-                    
                     st.session_state.messages.append({"role": "assistant", "content": reply, "html": cards_html})
                 except Exception as e:
                     st.error(str(e))
