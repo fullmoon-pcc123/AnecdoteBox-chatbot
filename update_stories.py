@@ -1,7 +1,7 @@
 import feedparser # You'll need to add this to requirements.txt
 
 # 1. Get your WordPress Feed
-feed_url = "https://yourwordpresssite.com"
+feed_url = "https://anecdotebox.com"
 feed = feedparser.parse(feed_url)
 
 # 2. Extract top 3 stories
