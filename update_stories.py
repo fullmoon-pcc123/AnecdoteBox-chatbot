@@ -1,6 +1,6 @@
-import feedparser # You'll need to add this to requirements.txt
+import feedparser
 
-# 1. Get your WordPress Feed
+# 1. Get your WordPress Feed (Added /feed)
 feed_url = "https://anecdotebox.com"
 feed = feedparser.parse(feed_url)
 
@@ -9,12 +9,13 @@ stories_html = ""
 for entry in feed.entries[:3]:
     stories_html += f'<li><a href="{entry.link}">{entry.title}</a></li>'
 
-# 3. Read your index.html and replace a placeholder with the stories
+# 3. Read index.html and update
 with open("index.html", "r") as f:
     content = f.read()
 
-# This replaces a comment <!--STORIES--> in your HTML with the actual list
-new_content = content.replace("<!--STORIES-->", stories_html + "\n<!--STORIES-->" )
+# This replaces the tag and puts it back for the next run (Fixed spaces)
+new_content = content.replace("<!--STORIES-->", stories_html + "\n<!--STORIES-->")
 
 with open("index.html", "w") as f:
     f.write(new_content)
+
