@@ -14,7 +14,7 @@ with open("index.html", "r") as f:
     content = f.read()
 
 # This replaces a comment <!--STORIES--> in your HTML with the actual list
-new_content = content.replace("<!--STORIES-->", stories_html)
+new_content = content.replace("<!--STORIES-->", stories_html + "\n<!--STORIES-->" )
 
 with open("index.html", "w") as f:
     f.write(new_content)
