@@ -345,8 +345,7 @@ if stories_list:
     Instruction: {instructions}
     Keep it short.
     """
-
-        with st.chat_message("assistant"):
+    with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 try:
                     if client:
@@ -360,3 +359,6 @@ if stories_list:
                     st.session_state.messages.append({"role": "assistant", "content": reply, "html": cards_html})
                 except Exception as e:
                     st.error(str(e))
+
+    
+        
