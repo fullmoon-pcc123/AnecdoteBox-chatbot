@@ -337,8 +337,7 @@ if stories_list:
         context_text += f"- {title}: {summary}\n"
         cards_html += f"<div style='min-width:220px; max-width:220px;'>{render_story_card(s)}</div>"
     cards_html += "</div>"
-        
-        instructions = "Recommend these specific stories." if is_exact else "I couldn't find an exact match, but here are some nice random stories."
+    instructions = "Recommend these specific stories." if is_exact else "I couldn't find an exact match, but here are some nice random stories."
 
         full_prompt = f"""
         You are Samu. User: "{prompt}"
