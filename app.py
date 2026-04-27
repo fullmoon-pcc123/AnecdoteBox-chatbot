@@ -177,7 +177,25 @@ MODEL = "gemini-flash-latest"
 # ---------------------------------------------------------
 # 5. HELPER FUNCTIONS
 # ---------------------------------------------------------
+import requests
+from bs4 import BeautifulSoup
 
+def clean_html(html):
+    return BeautifulSoup(html, "html.parser").get_text()
+
+def get_story_from_api(query):
+    url = f"https://anecdotebox.com/wp-json/wp/v2/posts?search={query}"
+    response = requests.get(url)
+    data = response.json()
+
+    if data:
+        title = data[0]["title"]["rendered"]
+        content = clean_html(data[0]["content"]["rendered"])
+        link = data[0]["link"]
+
+        return f"{title}\n\n{content[:1200]}\n\nRead more: {link}"
+    
+    return None
 def render_story_card(row):
     title = row.get('title', 'Untitled')
     full_summary = str(row.get('summary', ''))
@@ -287,21 +305,38 @@ with tab2:
 
         stories_list = []
         is_exact = False
-        if not df.empty:
-            found_data, is_exact = find_stories(prompt)
-            if isinstance(found_data, list): stories_list = found_data
-            else: stories_list = found_data
 
-        context_text = ""
-        cards_html = ""
-        if stories_list:
-            cards_html = "<div style='display:flex; gap:10px; overflow-x:auto; padding-bottom:15px;'>"
-            for s in stories_list:
-                title = s.get('title') if isinstance(s, dict) else s['title']
-                summary = s.get('summary') if isinstance(s, dict) else s['summary']
-                context_text += f"- {title}: {summary}\n"
-                cards_html += f"<div style='min-width:220px; max-width:220px;'>{render_story_card(s)}</div>"
-            cards_html += "</div>"
+# 🔌 Step 1: Try API first
+api_story = get_story_from_api(prompt)
+
+if api_story:
+    stories_list = [{
+        "title": "From AnecdoteBox",
+        "summary": api_story
+    }]
+    is_exact = True
+
+# 🔁 Step 2: fallback to Excel
+elif not df.empty:
+    found_data, is_exact = find_stories(prompt)
+    if isinstance(found_data, list): 
+        stories_list = found_data
+    else: 
+        stories_list = found_data
+
+
+# ✅ UI BLOCK (must be OUTSIDE)
+context_text = ""
+cards_html = ""
+
+if stories_list:
+    cards_html = "<div style='display:flex; gap:10px; overflow-x:auto; padding-bottom:15px;'>"
+    for s in stories_list:
+        title = s.get('title') if isinstance(s, dict) else s['title']
+        summary = s.get('summary') if isinstance(s, dict) else s['summary']
+        context_text += f"- {title}: {summary}\n"
+        cards_html += f"<div style='min-width:220px; max-width:220px;'>{render_story_card(s)}</div>"
+    cards_html += "</div>"
         
         instructions = "Recommend these specific stories." if is_exact else "I couldn't find an exact match, but here are some nice random stories."
 
