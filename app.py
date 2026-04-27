@@ -339,12 +339,12 @@ if stories_list:
     cards_html += "</div>"
     instructions = "Recommend these specific stories." if is_exact else "I couldn't find an exact match, but here are some nice random stories."
 
-        full_prompt = f"""
-        You are Samu. User: "{prompt}"
-        Stories: {context_text}
-        Instruction: {instructions}
-        Keep it short.
-        """
+    full_prompt = f"""
+    You are Samu. User: "{prompt}"
+    Stories: {context_text}
+    Instruction: {instructions}
+    Keep it short.
+    """
 
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
