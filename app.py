@@ -354,7 +354,7 @@ if stories_list:
                     else:
                         reply = "API Key error."
                     
-                    st.write(reply)
+                    st.write("DEBUG:I reached response stage")
                     if cards_html: st.markdown(cards_html, unsafe_allow_html=True)
                     st.session_state.messages.append({"role": "assistant", "content": reply, "html": cards_html})
                 except Exception as e:
