@@ -300,6 +300,7 @@ with tab2:
                 st.markdown(msg["html"], unsafe_allow_html=True)
 
     if prompt := st.chat_input("Ex: I want a story about hope..."):
+        st.write("DEBUG:I reached response stage")
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.write(prompt)
 
