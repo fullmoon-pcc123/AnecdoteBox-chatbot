@@ -151,10 +151,34 @@ df = load_data()
 
 def clean_html(html):
     return BeautifulSoup(html, "html.parser").get_text()
-
-def get_stories_from_website(query):
+def extract_keywords(query):
+    """Turns 'Tell me a story about emojis' into 'emojis'"""
+    if not client: 
+        return query
     try:
-        url = f"https://anecdotebox.com/wp-json/wp/v2/posts?search={query}&per_page=3&_embed"
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Extract 1 or 2 essential search keywords from the user's prompt. Output ONLY the keywords separated by spaces. Example: 'Tell me about hope' -> 'hope'"},
+                {"role": "user", "content": query}
+            ],
+            max_tokens=10
+        )
+        return response.choices[0].message.content.strip()
+    except:
+        return query
+        
+def get_stories_from_website(query):
+    # Use the cleaner keywords for better WP search
+    search_term = extract_keywords(query)
+    
+    try:
+        # If user asks for 'latest' or 'new', we just get the most recent posts
+        if any(word in query.lower() for word in ["latest", "new", "recent"]):
+            url = f"https://anecdotebox.com/wp-json/wp/v2/posts?per_page=3&_embed"
+        else:
+            url = f"https://anecdotebox.com/wp-json/wp/v2/posts?search={search_term}&per_page=3&_embed"
+            
         response = requests.get(url, timeout=10)
         data = response.json()
         results = []
@@ -255,14 +279,16 @@ with tab2:
         with st.chat_message("user"): st.write(prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("Searching..."):
-                # 1. Search Website
+            with st.spinner("Samu is searching the box..."):
+                # 1. Improved Website Search (Uses AI to find better keywords)
                 results = get_stories_from_website(prompt)
                 source = "website"
                 
                 # 2. Fallback to Excel
                 if not results:
-                    results = find_stories_in_excel(prompt)
+                    # We use the AI-extracted keywords for Excel too!
+                    clean_q = extract_keywords(prompt)
+                    results = find_stories_in_excel(clean_q)
                     source = "local collection"
 
                 # 3. Build Display
