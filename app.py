@@ -3,18 +3,137 @@ import pandas as pd
 import os
 import requests
 from bs4 import BeautifulSoup
-from openai import OpenAI  # <--- Switched from Google to OpenAI
+from openai import OpenAI
 
 # ---------------------------------------------------------
-# 1. PAGE CONFIG & CSS
+# 1. PAGE CONFIGURATION
 # ---------------------------------------------------------
-st.set_page_config(page_title="AnecdoteBox", page_icon="icon.png", layout="centered")
-
-# (Keep your existing CSS here...)
-st.markdown("""<style>...</style>""", unsafe_allow_html=True)
+st.set_page_config(
+    page_title="AnecdoteBox",
+    page_icon="icon.png", 
+    layout="centered"
+)
 
 # ---------------------------------------------------------
-# 2. DATA LOADING & SEARCH FUNCTIONS
+# 2. CUSTOM CSS (RESTORED TO YOUR ORIGINAL BEAUTIFUL VERSION)
+# ---------------------------------------------------------
+st.markdown("""
+<style>
+/* --- MAIN BACKGROUND --- */
+.stApp {
+    background-color: #FDFBF7;
+    background-image: linear-gradient(180deg, #FDFBF7 0%, #F5F0E6 100%);
+    color: #4A4A4A;
+    font-family: 'Helvetica Neue', sans-serif;
+}
+
+/* --- LOGO TEXT STYLING --- */
+.logo-container {
+    text-align: center;
+    margin-top: 20px;
+    margin-bottom: 5px;
+}
+.logo-text {
+    font-family: 'Arial Rounded MT Bold', 'Helvetica Rounded', 'Arial', sans-serif;
+    font-size: 50px; 
+    font-weight: 900;
+    color: #1A1F2C; 
+    letter-spacing: -1px;
+    line-height: 1.1;
+}
+.logo-accent {
+    color: #E64833; 
+}
+.logo-tagline {
+    font-family: 'Helvetica Neue', sans-serif;
+    font-size: 16px;
+    color: #666;
+    margin-top: 0px;
+    margin-bottom: 30px;
+    font-weight: 500;
+    text-align: center;
+}
+
+/* --- CHAT WITH SAMU HEADER --- */
+.samu-header {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border: 1px solid #EFEFEF;
+    margin-bottom: 25px;
+}
+.samu-title {
+    font-family: 'Georgia', serif;
+    font-size: 26px; 
+    font-weight: 800;
+    color: #C4622D;
+    margin: 0;
+}
+.samu-subtitle {
+    font-size: 15px;
+    color: #8B5E3C;
+    font-style: italic;
+    margin-top: 5px;
+}
+
+/* --- STORY CARDS --- */
+.story-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: transform 0.2s;
+    border: 1px solid #F0F0F0;
+    margin-bottom: 15px;
+    height: 100%;
+}
+.story-img {
+    width: 100%;
+    height: 160px; /* FORCES IMAGE TO BE SMALL */
+    object-fit: cover;
+}
+.card-content {
+    padding: 15px;
+}
+.story-title {
+    color: #C4622D;
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 8px;
+    line-height: 1.3;
+    height: 42px; 
+    overflow: hidden;
+}
+.story-summary {
+    color: #666;
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    height: 55px;
+}
+.read-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    text-decoration: none;
+    background-color: #C4622D;
+    color: white !important;
+    padding: 8px 0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: bold;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# 3. CORE FUNCTIONS (WEBSITE API + EXCEL)
 # ---------------------------------------------------------
 @st.cache_data
 def load_data():
@@ -35,20 +154,23 @@ def clean_html(html):
 
 def get_stories_from_website(query):
     try:
-        url = f"https://anecdotebox.com/wp-json/wp/v2/posts?search={query}&per_page=3"
-        response = requests.get(url, timeout=8)
+        url = f"https://anecdotebox.com/wp-json/wp/v2/posts?search={query}&per_page=3&_embed"
+        response = requests.get(url, timeout=10)
         data = response.json()
         results = []
         if isinstance(data, list) and len(data) > 0:
             for post in data:
+                img = ""
+                if "_embedded" in post and "wp:featuredmedia" in post["_embedded"]:
+                    img = post["_embedded"]["wp:featuredmedia"][0]["source_url"]
                 results.append({
                     "title": post["title"]["rendered"],
-                    "summary": clean_html(post["excerpt"]["rendered"])[:150] + "...",
-                    "url": post["link"]
+                    "summary": clean_html(post["content"]["rendered"])[:200],
+                    "url": post["link"],
+                    "featured_image": img
                 })
             return results
-    except:
-        pass
+    except: pass
     return []
 
 def find_stories_in_excel(query, n=3):
@@ -62,68 +184,79 @@ def find_stories_in_excel(query, n=3):
     scores.sort(key=lambda x: x[0], reverse=True)
     return [s[1] for s in scores[:n]] if scores else df.sample(n=min(n, len(df))).to_dict('records')
 
-def render_story_card(s):
-    title = s.get('title', 'Untitled')
-    summary = s.get('summary', '')[:80] + "..."
-    link = s.get('url', s.get('link', '#'))
-    img = s.get('featured_image', "https://images.unsplash.com/photo-1519681393798-3828fb4090bb?w=400")
+def render_story_card(row):
+    title = row.get('title', 'Untitled')
+    summary = row.get('summary', '')[:90] + "..."
+    link = row.get('url', row.get('link', '#'))
+    img_url = row.get('featured_image', "https://images.unsplash.com/photo-1519681393798-3828fb4090bb?w=400")
+    
     return f"""
     <div class="story-card">
-        <img src="{img}" class="story-img">
+        <a href="{link}" target="_blank">
+            <img src="{img_url}" class="story-img">
+        </a>
         <div class="card-content">
             <div class="story-title">{title}</div>
-            <p style="font-size:12px; color:#666; height:40px;">{summary}</p>
+            <div class="story-summary">{summary}</div>
             <a href="{link}" target="_blank" class="read-btn">Read Story ➜</a>
         </div>
     </div>
     """
 
 # ---------------------------------------------------------
-# 3. OPENAI API SETUP
+# 4. API SETUP (OPENAI)
 # ---------------------------------------------------------
 try:
-    # Make sure you put OPENAI_API_KEY in your Streamlit Secrets
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-    CHAT_MODEL = "gpt-4o-mini" # Fast, cheap, and very smart
-except Exception as e:
+except:
     client = None
-    st.error("OpenAI API Key missing or invalid.")
 
 # ---------------------------------------------------------
-# 4. CHAT INTERFACE
+# 5. UI DISPLAY (LOGO AT TOP)
 # ---------------------------------------------------------
-st.markdown('<div class="logo-container"><div class="logo-text">Anecdote<span class="logo-accent">Box</span></div></div>', unsafe_allow_html=True)
+st.markdown("""
+<div class="logo-container">
+    <div class="logo-text">Anecdote<span class="logo-accent">Box</span></div>
+    <div class="logo-tagline">Stories to make your day</div>
+</div>
+""", unsafe_allow_html=True)
 
 tab1, tab2 = st.tabs(["🏠 Fresh Picks", "💬 Chat with Samu"])
 
+# --- TAB 1: FRESH PICKS ---
 with tab1:
     if not df.empty:
         st.markdown("### ✨ Featured Stories")
         random_stories = df.sample(n=min(3, len(df)))
-        cols = st.columns(3)
+        c1, c2, c3 = st.columns(3)
         for i, (_, row) in enumerate(random_stories.iterrows()):
-            with cols[i]: st.markdown(render_story_card(row), unsafe_allow_html=True)
+            with [c1, c2, c3][i]:
+                st.markdown(render_story_card(row), unsafe_allow_html=True)
 
+# --- TAB 2: CHAT WITH SAMU ---
 with tab2:
-    st.markdown('<div class="samu-header"><div class="samu-title">Chat with Samu</div></div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="samu-header">
+        <div class="samu-title">Chat with Samu</div>
+        <div class="samu-subtitle">Your Friendly Guide to the AnecdoteBox</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "Hi! I'm Samu. How can I help you today?"}]
+        st.session_state.messages = [{"role": "assistant", "content": "Hello! I am Samu. How are you feeling today?"}]
 
-    # Display History
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
             if "html" in msg: st.markdown(msg["html"], unsafe_allow_html=True)
 
-    # User Input
-    if prompt := st.chat_input("I'm looking for a story about..."):
+    if prompt := st.chat_input("Ex: I want a story about emojis..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.write(prompt)
 
         with st.chat_message("assistant"):
             with st.spinner("Searching..."):
-                # 1. Search Website First
+                # 1. Search Website
                 results = get_stories_from_website(prompt)
                 source = "website"
                 
@@ -132,36 +265,30 @@ with tab2:
                     results = find_stories_in_excel(prompt)
                     source = "local collection"
 
-                # 3. Build UI & Context
+                # 3. Build Display
                 context_text = ""
                 cards_html = "<div style='display:flex; gap:10px; overflow-x:auto; padding-bottom:15px;'>"
                 for s in results:
-                    context_text += f"Title: {s['title']}\n"
-                    cards_html += f"<div style='min-width:200px;'>{render_story_card(s)}</div>"
+                    context_text += f"Title: {s['title']}. Content: {s.get('summary','')[:100]}\n"
+                    cards_html += f"<div style='min-width:220px;'>{render_story_card(s)}</div>"
                 cards_html += "</div>"
 
-                # 4. ChatGPT Call
+                # 4. AI Response
                 try:
                     if client:
                         response = client.chat.completions.create(
-                            model=CHAT_MODEL,
+                            model="gpt-4o-mini",
                             messages=[
-                                {"role": "system", "content": "You are Samu, a warm storyteller. Be brief (2 sentences)."},
-                                {"role": "user", "content": f"The user asked: {prompt}. I found these stories in my {source}: {context_text}. Give a friendly response."}
+                                {"role": "system", "content": "You are Samu, a warm storyteller. Be friendly and brief (max 2 sentences)."},
+                                {"role": "user", "content": f"User: {prompt}. I found these in my {source}: {context_text}"}
                             ]
                         )
                         reply = response.choices[0].message.content
                     else:
-                        reply = "I found these stories for you!"
-                except Exception as e:
-                    reply = "I've searched my collection and found these for you:"
-                    st.error(f"ChatGPT Error: {e}")
+                        reply = "I found these stories for you in my box!"
+                except:
+                    reply = "I found these in my box for you!"
 
                 st.write(reply)
                 st.markdown(cards_html, unsafe_allow_html=True)
-                
-                st.session_state.messages.append({
-                    "role": "assistant", 
-                    "content": reply, 
-                    "html": cards_html
-                })
+                st.session_state.messages.append({"role": "assistant", "content": reply, "html": cards_html})
