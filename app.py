@@ -2,20 +2,22 @@ import streamlit as st
 import pandas as pd
 import os
 import requests
+import time
+import base64
 from bs4 import BeautifulSoup
 from openai import OpenAI
 
 # ---------------------------------------------------------
-# 1. PAGE CONFIGURATION
+# 1. PAGE CONFIGURATION & SOCIAL METADATA
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="AnecdoteBox",
-    page_icon="icon.png", 
+    page_icon="https://anecdotebox.com/wp-content/uploads/2024/09/cropped-favicon-32x32.png", 
     layout="centered"
 )
 
 # ---------------------------------------------------------
-# 2. CUSTOM CSS (RESTORED TO YOUR ORIGINAL BEAUTIFUL VERSION)
+# 2. CUSTOM CSS (RESTORED TO YOUR ORIGINAL BEAUTIFUL DESIGN)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
@@ -41,9 +43,7 @@ st.markdown("""
     letter-spacing: -1px;
     line-height: 1.1;
 }
-.logo-accent {
-    color: #E64833; 
-}
+.logo-accent { color: #E64833; }
 .logo-tagline {
     font-family: 'Helvetica Neue', sans-serif;
     font-size: 16px;
@@ -78,7 +78,7 @@ st.markdown("""
     margin-top: 5px;
 }
 
-/* --- STORY CARDS --- */
+/* --- STORY CARDS (FIXED IMAGE SIZE) --- */
 .story-card {
     background: white;
     border-radius: 12px;
@@ -89,14 +89,13 @@ st.markdown("""
     margin-bottom: 15px;
     height: 100%;
 }
+.story-card:hover { transform: translateY(-3px); }
 .story-img {
     width: 100%;
-    height: 160px; /* FORCES IMAGE TO BE SMALL */
+    height: 160px; /* FORCES IMAGE TO BE UNIFORM */
     object-fit: cover;
 }
-.card-content {
-    padding: 15px;
-}
+.card-content { padding: 15px; }
 .story-title {
     color: #C4622D;
     font-weight: bold;
@@ -133,8 +132,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3. CORE FUNCTIONS (WEBSITE API + EXCEL)
+# 3. HELPER FUNCTIONS & LOGIC
 # ---------------------------------------------------------
+try:
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+except:
+    client = None
+
+def get_base64_of_bin_file(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
 @st.cache_data
 def load_data():
     csv_file = "Chatbox Master file.csv"
@@ -151,33 +160,29 @@ df = load_data()
 
 def clean_html(html):
     return BeautifulSoup(html, "html.parser").get_text()
+
 def extract_keywords(query):
-    """Turns 'Tell me a story about emojis' into 'emojis'"""
-    if not client: 
-        return query
+    """Uses AI to distill search terms for high reliability"""
+    if not client: return query
     try:
-        response = client.chat.completions.create(
+        resp = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "Extract 1 or 2 essential search keywords from the user's prompt. Output ONLY the keywords separated by spaces. Example: 'Tell me about hope' -> 'hope'"},
-                {"role": "user", "content": query}
-            ],
+            messages=[{"role": "system", "content": "Extract 1-2 core keywords from the user prompt. Output ONLY the keywords. Example: 'Show me stories about emojis' -> 'emojis'"},
+                      {"role": "user", "content": query}],
             max_tokens=10
         )
-        return response.choices[0].message.content.strip()
-    except:
-        return query
-        
-def get_stories_from_website(query):
-    # Use the cleaner keywords for better WP search
-    search_term = extract_keywords(query)
-    
+        return resp.choices[0].message.content.strip()
+    except: return query
+
+def get_stories_from_website(query=None, limit=3):
+    """Fetches Live Website Stories. If query is None, gets absolute latest."""
+    t = int(time.time()) # Cache buster
     try:
-        # If user asks for 'latest' or 'new', we just get the most recent posts
-        if any(word in query.lower() for word in ["latest", "new", "recent"]):
-            url = f"https://anecdotebox.com/wp-json/wp/v2/posts?per_page=3&_embed"
+        if not query or any(w in query.lower() for w in ["latest", "new", "recent", "fresh"]):
+            url = f"https://anecdotebox.com/wp-json/wp/v2/posts?per_page={limit}&_embed&t={t}"
         else:
-            url = f"https://anecdotebox.com/wp-json/wp/v2/posts?search={search_term}&per_page=3&_embed"
+            clean_q = extract_keywords(query)
+            url = f"https://anecdotebox.com/wp-json/wp/v2/posts?search={clean_q}&per_page={limit}&_embed&t={t}"
             
         response = requests.get(url, timeout=10)
         data = response.json()
@@ -199,11 +204,11 @@ def get_stories_from_website(query):
 
 def find_stories_in_excel(query, n=3):
     if df.empty: return []
-    q = query.lower()
+    clean_q = extract_keywords(query).lower()
     scores = []
     for _, row in df.iterrows():
         txt = f"{row.get('title','')} {row.get('tags','')} {row.get('summary','')}".lower()
-        score = sum(1 for w in q.split() if w in txt)
+        score = sum(1 for w in clean_q.split() if w in txt)
         if score > 0: scores.append((score, row.to_dict()))
     scores.sort(key=lambda x: x[0], reverse=True)
     return [s[1] for s in scores[:n]] if scores else df.sample(n=min(n, len(df))).to_dict('records')
@@ -228,34 +233,46 @@ def render_story_card(row):
     """
 
 # ---------------------------------------------------------
-# 4. API SETUP (OPENAI)
+# 4. BRANDING SECTION (LOGO)
 # ---------------------------------------------------------
-try:
-    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-except:
-    client = None
+logo_file = "logo.png"
+if os.path.exists(logo_file):
+    logo_base64 = get_base64_of_bin_file(logo_file)
+    st.markdown(f"""
+        <div class="logo-container">
+            <img src="data:image/png;base64,{logo_base64}" width="250">
+            <div class="logo-tagline">Stories to make your day</div>
+        </div>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+        <div class="logo-container">
+            <div class="logo-text">Anecdote<span class="logo-accent">Box</span></div>
+            <div class="logo-tagline">Stories to make your day</div>
+        </div>
+    """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 5. UI DISPLAY (LOGO AT TOP)
+# 5. TABS & INTERFACE
 # ---------------------------------------------------------
-st.markdown("""
-<div class="logo-container">
-    <div class="logo-text">Anecdote<span class="logo-accent">Box</span></div>
-    <div class="logo-tagline">Stories to make your day</div>
-</div>
-""", unsafe_allow_html=True)
-
 tab1, tab2 = st.tabs(["🏠 Fresh Picks", "💬 Chat with Samu"])
 
-# --- TAB 1: FRESH PICKS ---
+# --- TAB 1: FRESH PICKS (WEBSITE FIRST) ---
 with tab1:
-    if not df.empty:
-        st.markdown("### ✨ Featured Stories")
-        random_stories = df.sample(n=min(3, len(df)))
-        c1, c2, c3 = st.columns(3)
-        for i, (_, row) in enumerate(random_stories.iterrows()):
-            with [c1, c2, c3][i]:
-                st.markdown(render_story_card(row), unsafe_allow_html=True)
+    st.markdown("### ✨ Featured Stories")
+    # Priority 1: Website
+    featured = get_stories_from_website(limit=3)
+    
+    # Priority 2: Excel Fallback
+    if not featured and not df.empty:
+        featured = df.sample(n=min(3, len(df))).to_dict('records')
+
+    if featured:
+        cols = st.columns(3)
+        for i, row in enumerate(featured):
+            with cols[i % 3]: st.markdown(render_story_card(row), unsafe_allow_html=True)
+    else:
+        st.info("No stories found.")
 
 # --- TAB 2: CHAT WITH SAMU ---
 with tab2:
@@ -267,53 +284,45 @@ with tab2:
     """, unsafe_allow_html=True)
 
     if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "Hello! I am Samu. How are you feeling today?"}]
+        st.session_state.messages = [{"role": "assistant", "content": "Hello! I am Samu. How can I help you today?"}]
 
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
             if "html" in msg: st.markdown(msg["html"], unsafe_allow_html=True)
 
-    if prompt := st.chat_input("Ex: I want a story about emojis..."):
+    if prompt := st.chat_input("Ex: Show me stories about emojis..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"): st.write(prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("Samu is searching the box..."):
-                # 1. Improved Website Search (Uses AI to find better keywords)
-                results = get_stories_from_website(prompt)
+            with st.spinner("Searching the box..."):
+                # Search Logic
+                res = get_stories_from_website(prompt)
                 source = "website"
-                
-                # 2. Fallback to Excel
-                if not results:
-                    # We use the AI-extracted keywords for Excel too!
-                    clean_q = extract_keywords(prompt)
-                    results = find_stories_in_excel(clean_q)
+                if not res:
+                    res = find_stories_in_excel(prompt)
                     source = "local collection"
 
-                # 3. Build Display
-                context_text = ""
+                # Build Card Carousel
                 cards_html = "<div style='display:flex; gap:10px; overflow-x:auto; padding-bottom:15px;'>"
-                for s in results:
-                    context_text += f"Title: {s['title']}. Content: {s.get('summary','')[:100]}\n"
+                context = ""
+                for s in res:
+                    context += f"Title: {s['title']}\n"
                     cards_html += f"<div style='min-width:220px;'>{render_story_card(s)}</div>"
                 cards_html += "</div>"
 
-                # 4. AI Response
+                # AI Narration
                 try:
                     if client:
-                        response = client.chat.completions.create(
+                        chat = client.chat.completions.create(
                             model="gpt-4o-mini",
-                            messages=[
-                                {"role": "system", "content": "You are Samu, a warm storyteller. Be friendly and brief (max 2 sentences)."},
-                                {"role": "user", "content": f"User: {prompt}. I found these in my {source}: {context_text}"}
-                            ]
+                            messages=[{"role": "system", "content": "You are Samu, a warm storyteller. Be friendly and brief (2 sentences)."},
+                                      {"role": "user", "content": f"User asked: {prompt}. Found in {source}: {context}"}]
                         )
-                        reply = response.choices[0].message.content
-                    else:
-                        reply = "I found these stories for you in my box!"
-                except:
-                    reply = "I found these in my box for you!"
+                        reply = chat.choices[0].message.content
+                    else: reply = "I found these stories for you!"
+                except: reply = "I found these in my box for you!"
 
                 st.write(reply)
                 st.markdown(cards_html, unsafe_allow_html=True)
